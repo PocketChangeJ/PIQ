@@ -1,17 +1,32 @@
 IMPORTANT - READ ME
 ======================================
 
+Frequently asked questions
+-----
+
+If you have a question [read me first](https://bitbucket.org/thashim/piq-single/wiki/FAQ)
+
 common.r
 -----
 MODIFY genome to fit your data, match bis("BSgenome.*") to your genome
 
+As of bioconductor 2.14 some of the package names have changed. Description below:
+
+Organism | package name | description
+----------|---------------|--------------
+Human | BSgenome.Hsapiens.UCSC.hg19.masked | Human genome + repeatmask
+Human | BSgenome.Hsapiens.UCSC.hg19| Human genome (set mapq=0 or blacklist)
+Mouse | BSgenome.Mmusculus.UCSC.mm10| Mouse genome (set mapq=0 or blacklist)
+Yeast | BSgenome.Scerevisiae.UCSC.sacCer2 | Yeast (set mapq=0)
+
+In general we suggest repeatmasking the genome when using unique maps (mapq>=1). hg19.masked does this by default for mm10 and sacCer2, the masked genomes do not have repeatmask, and we'd suggest blacklisting them via a blacklist or use non-unique maps. 
+
+
+
+
 input files
 ----
 use jasparfix.txt in the pwms folder (all JASPAR including PBM hits) for a comprehensive list. If for whatever reason you only want JASPAR CORE hits, use jaspar.txt.
-
-reverse complements
-----
-Each run of PIQ will call either the forward or reverse complement match ***not*** both at the same time. Set reverse complement related options in common.r and run twice to get both strands.
 
 
 How to run
@@ -50,23 +65,19 @@ Special use cases
 
 #### Multiple replicates
 
-If you have multiple technical replicates, bam2rdata.r will take multiple bamfiles as part of its argument and combine them.
+If you have replicates, please merge them using samtools merge.
 
-You can also combine the bam files beforehand.
+#### Multiple experiments
+
+If you have multiple experiments in the same experimental condition but different assays, bam2rdata.r will take multiple bamfiles as part of its argument and use them simultaneously.
 
 #### Control experiments
 
 If you have control experiments such as genomic DNA or naked DNase-I digestion and want to know if your results are significant with respect to control. Do the following:
 
-1. Run PIQ once on your training data normally, with the exception that the temporary directory (/scratch/tmp in the example above) is a non-temp directory such as (/cluster/thashim/training.run)
+    `Rscript pertf.bg.r /cluster/thashim/basepiq/common.r /cluster/thashim/PIQ/motif.matches/ /scratch/tmp/ /cluster/thashim/130130.mm10.d0/ /cluster/thashim/PIQ/d0.RData /cluter/thashim/PIQ/control.RData 139`
 
-2. Run PIQ on your background data once using your background data, with a separate temp directory such as /cluster/thashim/background.run
-
-3. Run bindcall.standalone.r invoking the following arguments
-
-    `Rscript bindcall.standalone.r /cluster/thashim/basepiq/common.r /cluster/thashim/PIQ/motif.matches/ /cluster/thashim/training.run/ /cluster/thashim/background.output/ /cluster/thashim/background.run 139`
-
-    This will use the profile / footprint learned from the training data and output scores on the background track.
+    This will use the profile / footprint learned from the training data (d0.RData) and output scores over the control data.
 
 
 #### Train and test separately
@@ -83,7 +94,6 @@ Parameters
 
 Check before every run
 ----
-* **match.rc**
 * **Genome type**
 
 Quality control / blacklisting

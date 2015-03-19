@@ -158,31 +158,22 @@ makesvlite <- function(filename,label,rot.pos,rot.neg,minread=5){
     pms=as.matrix(summary(pos.mat))
     pns=as.matrix(summary(neg.mat))
     cv=converter(pms,pns,rct,nrow(pos.mat),label)
-    cv[rct>(sumtr(minread)+1)]
+    cv[rct>=(sumtr(minread)+1)]
 }
 
 if(fast.mode){
 
 validpos = list.files(datadir,paste0('positive.tf',pwmid,'-'),full.names=T)
-vptrain=validpos
-allpos=do.call(c,lapply(vptrain,makesvlite,label=1,minread=10*wsize/1000,rot.pos=rot.pos,rot.neg=rot.neg))
-
 validneg = list.files(datadir,paste0('background.tf',pwmid,'-'),full.names=T)
-vntrain=validneg
-allneg=do.call(c,lapply(vntrain,makesvlite,label= -1,minread= -1, rot.pos=rot.pos,rot.neg=rot.neg))
 
+allpos=do.call(c,lapply(validpos,makesvlite,label=1,minread=max(10*wsize/1000,1),rot.pos=rot.pos,rot.neg=rot.neg))
+allneg=do.call(c,lapply(validneg,makesvlite,label= -1,minread= 0, rot.pos=rot.pos,rot.neg=rot.neg))
 writeLines(c(allpos,allneg),file.path(tmpdir,paste0(pwmid,'-svlite.txt')))
-
-#
-#####
-
-#####
-# calc fig
 
 itmax=min(5e+07,500*length(allpos))
 
 wsz = 2*nrow(pos.mat)+2
-sv.fit=sofia(file.path(tmpdir,paste0(pwmid,'-svlite.txt')),verbose=T,dimensionality=wsz,random_seed=1,lambda=10000/length(allpos),iterations=itmax,learner_type='logreg-pegasos',eta_type='basic',loop_type='balanced-stochastic')
+sv.fit=sofia(file.path(tmpdir,paste0(pwmid,'-svlite.txt')),verbose=T,dimensionality=wsz,random_seed=1,lambda=1*10^6/(length(allpos)*wsz),iterations=itmax,learner_type='logreg-pegasos',eta_type='basic',loop_type='balanced-stochastic')
 
 vpos=suppressMessages(as.vector((sv.fit$weights[2+(1:(nrow(pos.mat)))])))
 vneg=suppressMessages(as.vector((sv.fit$weights[2+(1:(nrow(pos.mat)))+(nrow(pos.mat))])))
@@ -200,26 +191,26 @@ allnom = c('label','rct',paste0('x',1:ncol(tmat.pos)))
 alldat=rbind(
     do.call(rbind,lapply(validpos,function(i){
         print(i)
-    load(i)
-    rct = sumtr(colSums(pos.mat) + colSums(neg.mat))+1
-    y=data.frame(label=1,rct[rct>(sumtr(11)+1)],x=t(as.matrix(t(tmat.pos)%*%pos.mat[,rct>(sumtr(11)+1)] + t(tmat.neg)%*%neg.mat[,rct>(sumtr(11)+1)])))
-    colnames(y)=allnom
-    y
-})),
+        load(i)
+        rct = sumtr(colSums(pos.mat) + colSums(neg.mat))+1
+        y=data.frame(label=rep(1,sum(rct>(sumtr(10)+1))),rct[rct>(sumtr(10)+1)],x=t(as.matrix(t(tmat.pos)%*%pos.mat[,rct>(sumtr(10)+1)] + t(tmat.neg)%*%neg.mat[,rct>(sumtr(10)+1)])))
+        colnames(y)=allnom
+        y
+    })),
     do.call(rbind,lapply(validneg,function(i){
-    print(i)
-    load(i)
-    rct = sumtr(colSums(pos.mat) + colSums(neg.mat))+1
-    y=data.frame(label=-1,rct,x=t(as.matrix(t(tmat.pos)%*%pos.mat + t(tmat.neg)%*%neg.mat)))
-    colnames(y)=allnom
-    y
+        print(i)
+        load(i)
+        rct = sumtr(colSums(pos.mat) + colSums(neg.mat))+1
+        y=data.frame(label=-1,rct,x=t(as.matrix(t(tmat.pos)%*%pos.mat + t(tmat.neg)%*%neg.mat)))
+        colnames(y)=allnom
+        y
 })))
 
 write.svmlight(alldat[,1],as.matrix(alldat[,-1]),file.path(tmpdir,paste0(pwmid,'-svlite.txt')))
 
 itmax=min(5e+07,1000*sum(alldat[,1]==1))
 
-sv.fit=sofia(file.path(tmpdir,paste0(pwmid,'-svlite.txt')),verbose=T,dimensionality=ncol(alldat),random_seed=1,lambda=10000/sum(alldat[,1]==1),iterations=itmax,learner_type='logreg-pegasos',eta_type='basic',loop_type='balanced-stochastic')
+sv.fit=sofia(file.path(tmpdir,paste0(pwmid,'-svlite.txt')),verbose=T,dimensionality=ncol(alldat),random_seed=1,lambda=1000/sum(alldat[,1]==1),iterations=itmax,learner_type='logreg-pegasos',eta_type='basic',loop_type='balanced-stochastic')
 
 sv.rotate=c(sv.fit$weights[1:2],tmat.pos%*%(sv.fit$weight[-(1:2)]),tmat.neg%*%(sv.fit$weight[-(1:2)]))
 

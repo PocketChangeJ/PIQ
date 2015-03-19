@@ -7,10 +7,10 @@ new.repos <- old.repos
 new.repos["CRAN"] <- "http://cran.stat.ucla.edu"
 options(repos = new.repos)
 
-#source("http://www.bioconductor.org/biocLite.R")
-if(!suppressMessages(require("BiocInstaller",quietly=T))){
-    install.packages("BiocInstaller", repos="http://www.bioconductor.org/packages/2.13/bioc")
-}
+source("http://www.bioconductor.org/biocLite.R")
+#if(!suppressMessages(require("BiocInstaller",quietly=T))){
+#    install.packages("BiocInstaller", repos="http://www.bioconductor.org/packages/2.13/bioc")
+#}
 
 ris <- function(x){if(!require(x,character.only=T,quietly=T,warn.conflicts=F)){
     install.packages(x)
@@ -53,9 +53,9 @@ suppressMessages(require(Matrix,quietly=T))
 
 
 #window size
-wsize = 1000
+wsize = 300
 #fast mode
 fast.mode = T
 
 #seqbias mode
-avoid.seqbias=T
+avoid.seqbias = F

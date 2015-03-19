@@ -9,8 +9,6 @@ load(bamfile)
 
 bamnames = names(allreads[[1]])
 
-coords2=sapply(coords.short,flank,width=wsize,both=T)
-
 obschrnames=names(allreads)
 preads=allreads[[obschrnames[1]]][[1]]$plus
 cutat=10
@@ -50,21 +48,7 @@ makeTFmatrix <- function(coords,prefix='',offset=0){
     for(chr in validchr){
         chrlen = slen[chr]
         print(chr)
-        if(prefix=='background.'){
-            nsites = max(length(coords[[chr]]),minbgs[chr])
-            coind = sample(start(coords[[chr]]),nsites,replace=T)+offset
-            if(use.w){
-                wchr=white.list[[chr]]
-                wlarge=wchr[width(wchr)>(2*wsize+1)]
-                csamp = sample(1:length(wlarge),nsites,prob=(width(wlarge)-(2*wsize)),replace=T)
-                starts = start(wlarge)[csamp]
-                ends = end(wlarge)[csamp]
-                coind=floor((ends-starts - 2*wsize) * runif(length(csamp)))+(starts+wsize)
-            }
-            chrcoord=sort(IRanges(start=coind-wsize,width=2*wsize))
-        }else{
-            chrcoord=coords[[chr]]
-        }
+        chrcoord=coords[[chr]]
         pos.mat = do.call(rBind,lapply(1:length(bamnames),function(i){
             pluscoord=allreads[[chr]][[i]]$plus
             if(length(pluscoord)>0){
@@ -108,8 +92,14 @@ makeTFmatrix <- function(coords,prefix='',offset=0){
     }
 }
 
+load(paste0(pwmdir,pwmid,'.pwmout.RData'))
+coords2=sapply(coords.short,flank,width=wsize,both=T)
 makeTFmatrix(coords2,'positive.')
+load(paste0(pwmdir.bg,pwmid,'.pwmout.RData'))
+coords2=sapply(coords.short,flank,width=wsize,both=T)
 makeTFmatrix(coords2,'background.',10000)
+
+load(paste0(pwmdir,pwmid,'.pwmout.RData'))
 
 #
 #####

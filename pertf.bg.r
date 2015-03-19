@@ -19,10 +19,11 @@ tmpdir = args[3]
 #location of output calls
 outdir = args[4]
 
-outdir.train = args[5]
+#location of the bam RData file made by bam2rdata.r
+bamfile.train = args[5]
 
 #location of the bam RData file made by bam2rdata.r
-bamfile = args[6]
+bamfile.test = args[6]
 
 #which pwm file to use in pwmdir
 pwmid = args[7]
@@ -49,15 +50,14 @@ load(paste0(pwmdir,pwmid,'.pwmout.RData'))
 if(sum(clengths[1])>0){
 phase=1
 at<-Sys.time()
+bamfile = bamfile.train
 source('loadbam.r')
 print(Sys.time()-at);at<-Sys.time()
-
-pwname.short = gsub("[[:punct:]]","",pwmname)
-if(match.rc){
-    pwname.short=paste0(pwname.short,'.RC')
-}
-load(file.path(outdir.train,paste0(pwmid,'-',pwname.short,'-params.RData')))
-
+phase=2
+source('cluster.r')
+print(Sys.time()-at);at<-Sys.time()
+bamfile = bamfile.test
+source('loadbam.r')
 phase=3
 source('bindcall.r')
 print(Sys.time()-at);at<-Sys.time()
@@ -85,15 +85,14 @@ load(paste0(pwmdir,pwmid,'.pwmout.rc.RData'))
 if(sum(clengths[1])>0){
 phase=1
 at<-Sys.time()
+bamfile = bamfile.train
 source('loadbam.r')
 print(Sys.time()-at);at<-Sys.time()
-
-pwname.short = gsub("[[:punct:]]","",pwmname)
-if(match.rc){
-    pwname.short=paste0(pwname.short,'.RC')
-}
-load(file.path(outdir.train,paste0(pwmid,'-',pwname.short,'-params.RData')))
-
+phase=2
+source('cluster.r')
+print(Sys.time()-at);at<-Sys.time()
+bamfile = bamfile.test
+source('loadbam.r')
 phase=3
 source('bindcall.r')
 print(Sys.time()-at);at<-Sys.time()

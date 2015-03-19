@@ -7,8 +7,8 @@ source('common.global.r')
 mapq = -1
 
 # load genome file
-suppressMessages(bis("BSgenome.Hsapiens.UCSC.hg19"))
-genome = BSgenome.Hsapiens.UCSC.hg19
+suppressMessages(bis("BSgenome.Mmusculus.UCSC.mm10"))
+genome = BSgenome.Mmusculus.UCSC.mm10
 
 #####
 # Run mode options

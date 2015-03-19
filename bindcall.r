@@ -4,15 +4,17 @@ source(commonfile)
 #pwmfile
 #load(file.path(pwmdir,paste0(pwmid,'.pwmout.RData')))
 #tmpdir
-load(file.path(tmpdir,paste0(pwmid,'.svout.RData')))
+#load(file.path(tmpdir,paste0(pwmid,'.svout.RData')))
 #outdir
 
 #####
 # make call
 datadir = paste0(tmpdir,'/',pwmid,'/')
 
-osvr=order(-sv.rotate[-(1:2)])+2
-sv.rotate[osvr[1:(2*ncol(pwmin))]] = sort(sv.rotate,decreasing=T)[(2*ncol(pwmin)+1)]
+if(avoid.seqbias){
+    osvr=order(-sv.rotate[-(1:2)])+2
+    sv.rotate[osvr[1:(2*ncol(pwmin))]] = sort(sv.rotate,decreasing=T)[(2*ncol(pwmin)+1)]
+}
 
 validpos = list.files(datadir,paste0('positive.tf',pwmid,'-'))
 chrids=match(sapply(strsplit(validpos,'[.-]'),function(i){i[3]}),ncoords)
@@ -118,14 +120,18 @@ pwb = sample(allpws,length(neglis),replace=T)
 ct.ratio = length(allpws)/length(neglis)
 
 stepsz=0.1
-alloptim=sapply(seq(stepsz,50,by=stepsz),nenrich)#
-center=(which.min(alloptim))*stepsz
+wtseq = seq(2,50,by=stepsz)
+alloptim=sapply(wtseq,nenrich)#
+center=wtseq[which.min(alloptim)]
 opt.pwm.weight=optimize(nenrich,c(max(1e-5,center-stepsz),center+stepsz))
 
+if(!exists('bcoef',mode='numeric')){
+bcoef = opt.pwm.weight$minimum
+}
 erpen=1
 
-scores=allpws+capf(allsvs)*opt.pwm.weight$minimum
-neg.scores = pwb + capf(neglis)*opt.pwm.weight$minimum
+scores=allpws+capf(allsvs)*bcoef
+neg.scores = pwb + capf(neglis)*bcoef
 maxl=length(scores)
 enrich.ratio=erpen*(findInterval(sort(-scores)[1:maxl],sort(-neg.scores)))/(1:maxl)*ct.ratio
 purity = 1/(enrich.ratio+1)
@@ -151,6 +157,8 @@ if(match.rc){
     pwname.short=paste0(pwname.short,'.RC')
 }
 
+save(bcoef, sv.rotate, file = file.path(outdir,paste0(pwmid,'-',pwname.short,'-params.RData')))
+
 write.csv(df.bg,file=file.path(outdir,paste0(pwmid,'-',pwname.short,'-calls.csv')))
 write.csv(df.all,file=file.path(outdir,paste0(pwmid,'-',pwname.short,'-calls.all.csv')))
 if(dump.bed){
@@ -169,19 +177,22 @@ xseq=seq(1,length(purity),length=1000)
 plot(xseq,purity[xseq],type='l',xlab='Number of sites called',ylab='Purity',main='estimated PPV vs number of calls')
 plot(sv.rotate[-(1:2)],type='l',sub=paste(sv.rotate[1],sv.rotate[2],sep=':'),xlab='offset from motif match, strands concatenated',ylab='score',main='Binding classifier')
 abline(h=0,col='red')
-plot(posct,type='l',xlab='offset from motif match',ylab='counts',main="observed counts at motif match vs background")
-points(negct,col='red',type='l')
-points(posbgct*ct.ratio,col='green',type='l')
-legend('bottomright',col=c('black','red','green'),lwd=1,legend=c('+strand','-strand','background'))
-plot(seq(stepsz,50,by=stepsz),1/(1+alloptim*ct.ratio),type='l',main='Sequence dependence vs max purity',xlab='inverse sequence dependence',ylab='max purity',log='x')
-abline(v=opt.pwm.weight$minimum)
+xrg = (1:length(posct)) - floor(length(posct)/2)
+plot(xrg,posct,type='l',xlab='offset from motif match',ylab='counts',main="observed counts at motif match vs background",xlim=c(-plot.wind,plot.wind),ylim=range(c(posct,posbgct*ct.ratio)))
+if(plot.bothstrand){
+    points(xrg,negct,col='red',type='l')
+}
+points(xrg,posbgct*ct.ratio,col='green',type='l')
+legend('topright',col=c('black','red','green'),lwd=1,legend=c('+strand','-strand','background'))
+plot(wtseq,1/(1+alloptim*ct.ratio),type='l',main='Sequence dependence vs max purity',xlab='inverse sequence dependence',ylab='max purity',log='x')
+abline(v=bcoef)
 #
 layout(matrix(c(1,3,4,2,2,2),2,3,byrow=T))
 plot(density(scores,bw=0.1),type='l',xlab='score',ylab='density',main='Scores for \n motif match (black) vs background (red)')
 points(density(neg.scores,bw=0.1),type='l',col='red')
 abline(v=cutv)
 spos = scores
-npos = pwb+capf(neglis)*opt.pwm.weight$minimum
+npos = pwb+capf(neglis)*bcoef
 samp=sample(1:length(allpws),50000,replace=T)
 samp.neg=sample(1:length(pwb),50000,replace=T)
 plot(allpws[samp],capf(allsvs[samp]),pch=c(46,20)[passed.cutoff[samp]+1],xlab='PWM score',ylab='DNase score',main='Distribution of PWM and DNase scores in pwm match (black) vs ctrl (red)\n with called sites (bold)')
@@ -217,3 +228,5 @@ pio.neg = log((sum(negcts[pwsub]*prank2)/sum(prank2))/(mean(bgnegcts[pwsub])))/l
 pio.value = (pio.plus+pio.neg)*2
 writeLines(paste0(pwmid,',',pio.value),file.path(outdir,paste0(pwmid,'-',pwname.short,'-chropen.txt')))
 }
+
+rm(bcoef)
